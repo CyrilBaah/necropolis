@@ -148,30 +148,28 @@ describe("detectZombies", () => {
   });
 
   it("property: never throws on arbitrary branch/PR arrays", () => {
+    // Constrain dates to a sane range to avoid RangeError from toISOString()
+    const safeDate = fc
+      .date({ min: new Date("1970-01-01"), max: new Date("2100-01-01") })
+      .map((d) => d.toISOString());
+
     const branchArb = fc.record({
       name: fc.string({ minLength: 1 }),
-      lastCommitDate: fc.oneof(
-        fc.constant(""),
-        fc.constant("not-a-date"),
-        fc.date().map((d) => d.toISOString())
-      ),
+      lastCommitDate: fc.oneof(fc.constant(""), fc.constant("not-a-date"), safeDate),
       isDefault: fc.boolean(),
     });
     const prArb = fc.record({
       number: fc.integer({ min: 1 }),
       title: fc.string(),
       state: fc.constant("open" as const),
-      lastActivityDate: fc.oneof(
-        fc.constant(""),
-        fc.date().map((d) => d.toISOString())
-      ),
+      lastActivityDate: fc.oneof(fc.constant(""), safeDate),
       headRef: fc.string({ minLength: 1 }),
     });
     fc.assert(
       fc.property(
         fc.array(branchArb),
         fc.array(prArb),
-        fc.date(),
+        fc.date({ min: new Date("1970-01-01"), max: new Date("2100-01-01") }),
         (branches, prs, now) => {
           expect(() => detectZombies(branches, prs, now)).not.toThrow();
         }
